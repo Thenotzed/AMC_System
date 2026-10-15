@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMC_System | Caffeine Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Default variables for < 100mg state */
+            --wave-color: rgba(59, 130, 246, 0.7); /* Blue */
+            --bg-color: #0f172a; /* slate-900 */
+            --wave-speed: 1; 
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            transition: background-color 1.5s ease;
+            overflow: hidden;
+            color: #f8fafc;
+        }
+
+        /* Glassmorphism Panel */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Wavy Background Elements */
+        .waves {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 45vh;
+            min-height: 100px;
+            max-height: 350px;
+            z-index: -1;
+        }
+
+        .parallax > use {
+            animation: move-forever linear infinite;
+            fill: var(--wave-color);
+            transition: fill 1.5s ease;
+        }
+
+        /* Dynamic Speeds & Opacities based on CSS Variables */
+        .parallax > use:nth-child(1) {
+            animation-duration: calc(20s / var(--wave-speed));
+            opacity: 0.7;
+        }
+        .parallax > use:nth-child(2) {
+            animation-duration: calc(15s / var(--wave-speed));
+            opacity: 0.5;
+            animation-delay: -2s;
+        }
+        .parallax > use:nth-child(3) {
+            animation-duration: calc(10s / var(--wave-speed));
+            opacity: 0.3;
+            animation-delay: -4s;
+        }
+        .parallax > use:nth-child(4) {
+            animation-duration: calc(7s / var(--wave-speed));
+            opacity: 1;
+            animation-delay: -5s;
+        }
+
+        @keyframes move-forever {
+            0% { transform: translate3d(-90px, 0, 0); }
+            100% { transform: translate3d(85px, 0, 0); }
+        }
+
+        /* Jitter / Danger State */
+        @keyframes jitter {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(2px, 2px) rotate(1deg); }
+            50% { transform: translate(-2px, -2px) rotate(-1deg); }
+            75% { transform: translate(-2px, 2px) rotate(0deg); }
+            100% { transform: translate(2px, -2px) rotate(-1deg); }
+        }
+        .jitter-effect {
+            animation: jitter 0.1s infinite;
+        }
+
+        /* Fun Facts Transition */
+        #fun-fact-box {
+            transition: opacity 0.6s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Wavy Live Wallpaper SVG -->
+    <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+        <defs>
+            <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+        </defs>
+        <g class="parallax">
+            <use xlink:href="#gentle-wave" x="48" y="0" />
+            <use xlink:href="#gentle-wave" x="48" y="3" />
+            <use xlink:href="#gentle-wave" x="48" y="5" />
+            <use xlink:href="#gentle-wave" x="48" y="7" />
+        </g>
+    </svg>
+
+    <!-- Main Tracker Container -->
+    <div id="main-container" class="glass-panel max-w-md w-full rounded-2xl p-6 relative z-10 transition-transform duration-300">
+        
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold tracking-tight text-white mb-1">AMC_System</h1>
+            <p class="text-slate-300 text-sm opacity-80">Daily Caffeine Tracker</p>
+        </div>
+
+        <!-- Dashboard / Status -->
+        <div class="mb-6">
+            <div class="flex justify-between items-end mb-3">
+                <div>
+                    <span id="current-intake" class="text-5xl font-extrabold text-white">0</span>
+                    <span class="text-slate-300 text-xl font-medium">mg</span>
+                </div>
+                <div class="text-right text-xs text-slate-300 uppercase tracking-wide">
+                    Max Limit: <span class="text-white font-bold text-sm">400mg</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="h-5 w-full bg-slate-800/80 rounded-full overflow-hidden relative shadow-inner">
+                <div id="progress-bar" class="h-full rounded-full transition-all duration-700 ease-out w-0 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
+            </div>
+            
+            <div class="mt-3 text-center text-sm font-medium h-5 tracking-wide" id="status-message">
+                Let's get some energy!
+            </div>
+        </div>
+
+        <!-- Warning Message -->
+        <div id="warning-alert" class="hidden mb-6 bg-red-900/60 backdrop-blur-sm border border-red-500/50 text-red-100 px-4 py-3 rounded-xl flex items-start shadow-lg">
+            <svg class="w-6 h-6 mr-2 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <div class="text-sm">
+                <strong class="font-bold">Overdose Warning!</strong>
+                <span class="block mt-1 opacity-90">You have exceeded the safe limit of 400mg. Please stop consuming caffeine today.</span>
+            </div>
+        </div>
+
+        <!-- Quick Add Buttons -->
+        <div class="text-slate-200 font-semibold mb-3 text-sm uppercase tracking-wider">Quick Add</div>
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <button onclick="addCaffeine(30)" class="flex flex-col items-center justify-center py-3 px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95">
+                <span class="text-2xl mb-1 drop-shadow-md">🍵</span>
+                <span class="text-xs font-semibold text-white">30mg</span>
+            </button>
+            <button onclick="addCaffeine(50)" class="flex flex-col items-center justify-center py-3 px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95">
+                <span class="text-2xl mb-1 drop-shadow-md">🧋</span>
+                <span class="text-xs font-semibold text-white">50mg</span>
+            </button>
+            <button onclick="addCaffeine(100)" class="flex flex-col items-center justify-center py-3 px-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95">
+                <span class="text-2xl mb-1 drop-shadow-md">☕</span>
+                <span class="text-xs font-semibold text-white">100mg</span>
+            </button>
+        </div>
+
+        <!-- Custom Add -->
+        <div class="text-slate-200 font-semibold mb-3 text-sm uppercase tracking-wider">Custom Add</div>
+        <div class="flex gap-3 mb-6">
+            <input type="number" id="custom-amount" placeholder="Amount (mg)" min="1" class="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent block w-full p-3 outline-none placeholder-slate-400 backdrop-blur-sm transition-all">
+            <button onclick="addCustomCaffeine()" class="bg-blue-600/80 hover:bg-blue-500 backdrop-blur-md border border-blue-400/30 text-white font-semibold rounded-xl text-sm px-6 py-3 transition-all duration-200 shadow-lg active:scale-95">
+                Add
+            </button>
+        </div>
+
+        <!-- Fun Facts Box -->
+        <div class="bg-black/20 border border-white/5 rounded-xl p-4 min-h-[90px] flex flex-col justify-center text-center shadow-inner relative overflow-hidden">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-widest absolute top-2 left-1/2 transform -translate-x-1/2">Did You Know?</span>
+            <p id="fun-fact-box" class="text-sm text-slate-200 italic mt-3 leading-relaxed opacity-0">
+                Loading interesting caffeine trivia...
+            </p>
+        </div>
+        
+        <!-- Reset option -->
+        <div class="mt-6 text-center">
+            <button onclick="resetData()" class="text-xs text-slate-400 hover:text-white underline transition-colors opacity-70 hover:opacity-100">
+                Reset Today's Data
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const MAX_LIMIT = 400;
+        
+        let currentIntake = 0;
+        let factInterval;
+
+        // Elements
+        const currentIntakeEl = document.getElementById('current-intake');
+        const progressBarEl = document.getElementById('progress-bar');
+        const statusMessageEl = document.getElementById('status-message');
+        const warningAlertEl = document.getElementById('warning-alert');
+        const customAmountInput = document.getElementById('custom-amount');
+        const mainContainerEl = document.getElementById('main-container');
+        const funFactBoxEl = document.getElementById('fun-fact-box');
+
+        // Fun Facts Array
+        const facts = [
+            "Coffee was supposedly discovered by a goat herder in Ethiopia when he noticed his goats became energetic after eating coffee cherries.",
+            "Caffeine is the most widely consumed psychoactive substance in the entire world.",
+            "A cup of 'decaf' coffee isn't completely caffeine-free; it usually contains 2 to 7 milligrams.",
+            "The word 'caffeine' originated from the German word 'Kaffee' and the French word 'café'.",
+            "Espresso has about a third of the caffeine of a regular cup of drip coffee, despite its strong flavor.",
+            "Dark roast coffee actually has slightly LESS caffeine than light roast coffee, as the roasting burns some off.",
+            "It takes about 45 minutes for caffeine to be fully absorbed by your body's tissues.",
+            "The half-life of caffeine in a healthy adult body is roughly 5 to 6 hours.",
+            "Bach wrote a mini-opera about coffee in 1732, famously known as the 'Coffee Cantata'.",
+            "Bees get a caffeine buzz! Certain plants put caffeine in their nectar to attract bees and improve their memory of the flower.",
+            "Finland consumes the most coffee per capita in the world, averaging about 12kg per person yearly.",
+            "The first webcam was invented at Cambridge University solely to monitor the status of a coffee pot."
+        ];
+        
+        let currentFactIndex = Math.floor(Math.random() * facts.length);
+
+        function init() {
+            // Local Storage Logic
+            const storedIntake = localStorage.getItem('amc_intake');
+            const storedDate = localStorage.getItem('amc_date');
+            const today = new Date().toDateString();
+
+            if (storedDate === today && storedIntake !== null) {
+                currentIntake = parseInt(storedIntake, 10);
+            } else {
+                currentIntake = 0;
+                localStorage.setItem('amc_date', today);
+            }
+            
+            updateUI();
+            startFunFacts();
+        }
+
+        // Fun Facts Logic
+        function updateFact() {
+            funFactBoxEl.style.opacity = 0; // Fade out
+            setTimeout(() => {
+                currentFactIndex = (currentFactIndex + 1) % facts.length;
+                funFactBoxEl.innerText = `"${facts[currentFactIndex]}"`;
+                funFactBoxEl.style.opacity = 1; // Fade in
+            }, 600); // Wait for fade out to complete
+        }
+
+        function startFunFacts() {
+            // Set initial fact instantly
+            funFactBoxEl.innerText = `"${facts[currentFactIndex]}"`;
+            funFactBoxEl.style.opacity = 1;
+            // Cycle every 12 seconds
+            factInterval = setInterval(updateFact, 12000);
+        }
+
+        // Tracking Logic
+        function addCaffeine(amount) {
+            currentIntake += amount;
+            saveAndRender();
+        }
+
+        function addCustomCaffeine() {
+            const amount = parseInt(customAmountInput.value, 10);
+            if (!isNaN(amount) && amount > 0) {
+                addCaffeine(amount);
+                customAmountInput.value = '';
+            }
+        }
+        
+        function resetData() {
+            currentIntake = 0;
+            saveAndRender();
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('amc_intake', currentIntake);
+            updateUI();
+        }
+
+        // Dynamic UI & Wallpaper Logic
+        function updateUI() {
+            currentIntakeEl.innerText = currentIntake;
+
+            // Progress Bar Visuals
+            let percentage = (currentIntake / MAX_LIMIT) * 100;
+            let visualPercentage = Math.min(percentage, 100);
+            progressBarEl.style.width = `${visualPercentage}%`;
+
+            const root = document.documentElement;
+
+            // Evaluate thresholds
+            if (currentIntake < 100) {
+                // Calm (Blue)
+                progressBarEl.className = 'h-full rounded-full transition-all duration-700 ease-out bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]';
+                statusMessageEl.innerText = 'System calm. Need more input.';
+                statusMessageEl.className = 'mt-3 text-center text-sm font-medium h-5 tracking-wide text-blue-400';
+                warningAlertEl.classList.add('hidden');
+                mainContainerEl.classList.remove('jitter-effect');
+                
+                // Wallpaper updates
+                root.style.setProperty('--wave-color', 'rgba(59, 130, 246, 0.6)');
+                root.style.setProperty('--bg-color', '#0f172a'); // slate-900
+                root.style.setProperty('--wave-speed', '1');
+
+            } else if (currentIntake >= 100 && currentIntake < 300) {
+                // Moderate (Green)
+                progressBarEl.className = 'h-full rounded-full transition-all duration-700 ease-out bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]';
+                statusMessageEl.innerText = 'Optimal zone. System active.';
+                statusMessageEl.className = 'mt-3 text-center text-sm font-medium h-5 tracking-wide text-emerald-400';
+                warningAlertEl.classList.add('hidden');
+                mainContainerEl.classList.remove('jitter-effect');
+                
+                // Wallpaper updates
+                root.style.setProperty('--wave-color', 'rgba(16, 185, 129, 0.6)');
+                root.style.setProperty('--bg-color', '#064e3b'); // emerald-900
+                root.style.setProperty('--wave-speed', '1.8');
+
+            } else if (currentIntake >= 300 && currentIntake <= 400) {
+                // Warning (Yellow/Orange)
+                progressBarEl.className = 'h-full rounded-full transition-all duration-700 ease-out bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]';
+                statusMessageEl.innerText = 'Approaching limits. Proceed with caution.';
+                statusMessageEl.className = 'mt-3 text-center text-sm font-medium h-5 tracking-wide text-amber-400';
+                warningAlertEl.classList.add('hidden');
+                mainContainerEl.classList.remove('jitter-effect');
+                
+                // Wallpaper updates
+                root.style.setProperty('--wave-color', 'rgba(245, 158, 11, 0.7)');
+                root.style.setProperty('--bg-color', '#78350f'); // amber-900
+                root.style.setProperty('--wave-speed', '3');
+
+            } else {
+                // Danger (Red + Jitter)
+                progressBarEl.className = 'h-full rounded-full transition-all duration-700 ease-out bg-red-600 shadow-[0_0_15px_rgba(220,38,38,1)]';
+                statusMessageEl.innerText = 'SYSTEM OVERLOAD!';
+                statusMessageEl.className = 'mt-3 text-center text-sm font-bold h-5 tracking-wide text-red-500';
+                warningAlertEl.classList.remove('hidden');
+                mainContainerEl.classList.add('jitter-effect');
+                
+                // Wallpaper updates
+                root.style.setProperty('--wave-color', 'rgba(220, 38, 38, 0.85)');
+                root.style.setProperty('--bg-color', '#450a0a'); // red-950
+                root.style.setProperty('--wave-speed', '6'); // Hyper fast
+            }
+        }
+
+        // Initialize App on Load
+        window.onload = init;
+    </script>
+</body>
+</html>
